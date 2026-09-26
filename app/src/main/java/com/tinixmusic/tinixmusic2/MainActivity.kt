@@ -11,7 +11,7 @@ class MainActivity : ComponentActivity() {
 
         val appName = "تینیکس موزیک"
         val message = createWelcomeMessage(appName)
-        val version = 1;
+        val version = 1
         setContent {
             Text(message + "\n" + createAppInfo( appName, version))
         }
