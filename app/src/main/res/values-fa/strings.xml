@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">نمایش عبارت‌ها</string>
+    <string name="title">عبارت‌ها در برابر دستورها</string>
+    <string name="input_label">ورودی را وارد کنید (u، d، 42 یا متن)</string>
+    <string name="if_result">عبارت if: %1$d</string>
+    <string name="when_result">عبارت when: %1$s</string>
+    <string name="try_result">عبارت try: %1$d</string>
+    <string name="assignment_note">توجه: انتساب یک دستور است، نه عبارت.</string>
+    <string name="direction_up">بالا</string>
+    <string name="direction_down">پایین</string>
+    <string name="direction_unknown">نامشخص</string>
+    <string name="switch_language">تغییر به انگلیسی</string>
+</resources>

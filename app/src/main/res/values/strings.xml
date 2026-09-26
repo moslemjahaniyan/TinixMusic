@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">tinixmusic2</string>
+
+
+    <string name="title">Expressions vs Statements</string>
+    <string name="input_label">Enter input (u, d, 42, or text)</string>
+    <string name="if_result">if expression: %1$d</string>
+    <string name="when_result">when expression: %1$s</string>
+    <string name="try_result">try expression: %1$d</string>
+    <string name="assignment_note">Note: Assignment is a statement, not an expression.</string>
+    <string name="direction_up">UP</string>
+    <string name="direction_down">DOWN</string>
+    <string name="direction_unknown">UNKNOWN</string>
+    <string name="switch_language">Switch to Persian</string>
+
+</resources>
