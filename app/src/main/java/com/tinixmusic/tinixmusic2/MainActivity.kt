@@ -24,34 +24,34 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val songs = listOf(Song("Envy" , "Slxughter" , "https://example.com/envy.mp3", R.drawable.music_logo),
 
-            Song("Paint It Black", "Rolling Stones", "https://example.com/paint.mp3" , R.drawable.music_logo),
-            Song("Believer", "Imagine Dragons", "https://example.com/believer.mp3" , R.drawable.music_logo),
-            Song("Shape of You", "Ed Sheeran", "https://example.com/shape.mp3"),
-            Song("Blinding Lights", "The Weeknd", "https://example.com/blinding.mp3", R.drawable.music_logo)
-        )
 
         setContent {
             MaterialTheme{
-                SongList(songs)
+                val navController = rememberNavController()
+                NavHost(navController = navController, startDestination = "songList"){
+                    composable("songList"){
+                        SongListScreen(navController = navController)
+                    }
+                    composable("songDetail/{songId}"){backStackEntry ->
+                        val songId = backStackEntry.arguments?.getString("songId")
+                        SongDetailScreen(songId = songId , navController = navController)
+
+                    }
+                }
             }
         }
     }
 
-
-
-    fun createWelcomeMessage(appName: String): String{
-        return "به $appName خوش آمدید"
-    }
-    fun createAppInfo(name: String, version: Int): String{
-        return "$name نسخه  $version"
-    }
 
 }
 
