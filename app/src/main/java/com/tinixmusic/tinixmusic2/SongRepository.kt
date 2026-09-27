@@ -1,40 +1,46 @@
 package com.tinixmusic.tinixmusic2
 
-object SongRepository {
-    val songs = listOf(
-        Song(id = "1",
-        title = "Envy",
-        artist = "Slxughter",
-        downloadUrl = "https://example.com/envy.mp3",
-        imageResId = R.drawable.music_logo
-        ),
-        Song(
-            id = "2",
-            title = "Paint It Black",
-            artist = "Rolling Stones",
-            downloadUrl = "https://example.com/paint.mp3",
-            imageResId = R.drawable.music_logo
-        ),
-        Song(
-            id = "3",
-            title = "Believer",
-            artist = "Imagine Dragons",
-            downloadUrl = "https://example.com/believer.mp3",
-            imageResId = R.drawable.music_logo
-        ),
-        Song(
-            id = "4",
-            title = "Shape of You",
-            artist = "Ed Sheeran",
-            downloadUrl = "https://example.com/shape.mp3",
-            imageResId = R.drawable.music_logo
-        ),
-        Song(
-            id = "5",
-            title = "Blinding Lights",
-            artist = null,
-            downloadUrl = "https://example.com/blinding.mp3",
 
+import android.text.Html
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Retrofit
+import retrofit2.converter.moshi.MoshiConverterFactory
+
+object SongRepository {
+    private val api: TinixApi by lazy {
+        val moshi = Moshi.Builder()
+            .add(KotlinJsonAdapterFactory())
+            .build()
+        val logging = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BODY
+        }
+        val client = OkHttpClient.Builder()
+            .addInterceptor(logging)
+            .build()
+
+        Retrofit.Builder()
+            .baseUrl("https://tinixmusic.ir/")
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .client(client)
+            .build()
+            .create(TinixApi:: class.java)
+    }
+    suspend fun getSong(): List<Song>{
+        val posts = api.getSongs()
+        return posts.map {it.toSong()}
+    }
+    suspend fun WpPost.toSong(): Song{
+        val imageUrl = embedded?.featuredMedia?.firstOrNull()?.source_url
+        return Song(
+            id = id.toString(),
+            title = Html.fromHtml(title.rendered , Html.FROM_HTML_MODE_LEGACY).toString(),
+            artist = artist ?: "نامشخص",
+            downloadUrl = music320 ?: "",
+            imageUrl = imageUrl
         )
-    )
+    }
+
 }

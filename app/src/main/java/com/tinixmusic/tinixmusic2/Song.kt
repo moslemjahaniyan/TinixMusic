@@ -5,5 +5,5 @@ data class Song(
     val title: String,
     val artist: String?,
     val downloadUrl: String,
-    val imageResId: Int? = null
+    val imageUrl: String? = null
 )
