@@ -21,7 +21,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,10 +49,25 @@ class MainActivity : ComponentActivity() {
         PlayerManager.connect(this)
 
         // ۲. درخواست مجوز Notification برای اندروید ۱۳+
-        //قرمز شد بیخیالش شدم
+        /*
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+         */
 
         setContent {
-            MaterialTheme{
+            val isDarkMode by SettingsRepository.isDarkMode(this)
+                .collectAsState(initial = false)
+
+            MaterialTheme(
+                colorScheme = if (isDarkMode) darkColorScheme() else lightColorScheme()
+            ) {
                 val navController = rememberNavController()
                 NavHost(navController = navController, startDestination = "songList"){
                     composable("songList"){
@@ -58,6 +77,9 @@ class MainActivity : ComponentActivity() {
                         val songId = backStackEntry.arguments?.getString("songId")
                         SongDetailScreen(songId = songId , navController = navController)
 
+                    }
+                    composable("settings") {
+                        SettingsScreen(navController = navController)
                     }
                 }
             }

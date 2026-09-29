@@ -33,6 +33,12 @@ import coil.compose.AsyncImage
 
 import kotlinx.coroutines.delay
 
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
+
 import androidx.compose.material.icons.filled.Pause
 @Composable
 fun SongDetailScreen(songId: String?, navController: NavController) {
@@ -93,6 +99,8 @@ fun SongDetailScreen(songId: String?, navController: NavController) {
         Spacer(modifier = Modifier.height(16.dp))
 
         // اطلاعات
+        // به جای این:
+        /*
         Text(
             text = currentSong.title,
             style = MaterialTheme.typography.headlineMedium
@@ -101,6 +109,46 @@ fun SongDetailScreen(songId: String?, navController: NavController) {
             text = currentSong.artist ?: "خواننده نامشخص",
             style = MaterialTheme.typography.bodyLarge
         )
+*/
+
+        // این رو بذار:
+        val context = LocalContext.current
+        val favorites by FavoritesRepository.getFavorite(context)
+            .collectAsState(initial = emptySet())
+        val isFavorite = currentSong.id in favorites
+        val scope = rememberCoroutineScope()
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = currentSong.title,
+                    style = MaterialTheme.typography.headlineMedium
+                )
+                Text(
+                    text = currentSong.artist ?: "خواننده نامشخص",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+            IconButton(
+                onClick = {
+                    scope.launch {
+                        FavoritesRepository.toggleFavorite(context, currentSong.id)
+                    }
+                }
+            ) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = "افزودن به علاقه‌مندی",
+                    tint = if (isFavorite) Color.Red else Color.Gray
+                )
+            }
+        }
+        //پایان این را بزار
+
+
         Spacer(modifier = Modifier.height(24.dp))
 
 
