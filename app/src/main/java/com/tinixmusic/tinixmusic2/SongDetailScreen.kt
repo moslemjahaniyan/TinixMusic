@@ -120,11 +120,16 @@ fun SongDetailScreen(songId: String?, navController: NavController) {
             )
             Spacer(modifier = Modifier.height(8.dp))
             PlayButton(
-                url = currentSong.downloadUrl, label = "پخش ورژن اصلی"
+                url = currentSong.downloadUrl,
+                title = currentSong.title,
+                artist = currentSong.artist,
+                imageUrl = currentSong.imageUrl,
+                label = "پخش ورژن اصلی"
             )
         }
 
         Spacer(modifier = Modifier.height(24.dp))
+
 
         // ====== لیست ورژن‌ها ======
         if(currentSong.versions.isNotEmpty()){
@@ -136,7 +141,12 @@ fun SongDetailScreen(songId: String?, navController: NavController) {
             Spacer(modifier = Modifier.height(8.dp))
             
             currentSong.versions.forEach{version ->
-                VersionRow(version = version)
+                VersionRow(
+                    version = version,
+                    title = currentSong.title,
+                    artist = currentSong.artist,
+                    imageUrl = currentSong.imageUrl
+                )
                 Spacer(modifier = Modifier.height(8.dp))
             
             }
@@ -157,24 +167,22 @@ fun SongDetailScreen(songId: String?, navController: NavController) {
 }
 
 @Composable
-fun PlayButton(url: String, label: String){
-    var context = LocalContext.current
-    var isPlaying by remember {
-        mutableStateOf(PlayerManager.isPlaying(url))
-    }
+fun PlayButton(
+    url: String,
+    title: String,
+    artist: String?,
+    imageUrl: String?,
+    label: String
+){
+    val context = LocalContext.current
+    val isPlaying by PlayerManager.isPlaying.collectAsState()
+    val currentUrl by PlayerManager.currentUrl.collectAsState()
+    val playingThis = isPlaying && currentUrl == null
 
-    // هر ثانیه وضعیت پخش رو چک کن
-    LaunchedEffect(url){
-        while(true){
-            isPlaying = PlayerManager.isPlaying(url)
-            kotlinx.coroutines.delay(500)
-
-        }
-    }
 
     Button(
         onClick = {
-            PlayerManager.playSong(context, url)
+                  PlayerManager.togglePlayPause(context , url,  title, artist, imageUrl )
         },
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -189,29 +197,37 @@ fun PlayButton(url: String, label: String){
 }
 
 @Composable
-fun VersionRow(version: SongVersion){
+fun VersionRow(
+    version: SongVersion,
+    title: String,
+    artist: String?,
+    imageUrl: String?
+){
     val context = LocalContext.current
-    var isPlaying by remember {
-        mutableStateOf(PlayerManager.isPlaying(version.url))
-    }
+    val isPlaying by PlayerManager.isPlaying.collectAsState()
+    val currentUrl by PlayerManager.currentUrl.collectAsState()
+    val playingThis = isPlaying && currentUrl == version.url
 
-    LaunchedEffect(version.url){
-        while (true){
-            isPlaying = PlayerManager.isPlaying(version.url)
-            kotlinx.coroutines.delay(500)
-        }
-    }
 
     Row(modifier = Modifier
         .fillMaxWidth()
-        .padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(text = "${version.labelFa} (${version.labelEn})",
+        .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "${version.labelFa} (${version.labelEn})",
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f)
         )
         IconButton(
             onClick = {
-                PlayerManager.playSong(context, version.url)
+                PlayerManager.togglePlayPause(
+                    context,
+                    version.url,
+                    "$title - ${version.labelFa}",
+                    artist,
+                    imageUrl
+                )
             }
         ) {
             Icon(

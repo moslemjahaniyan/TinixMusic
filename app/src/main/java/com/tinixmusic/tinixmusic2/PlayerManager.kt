@@ -1,44 +1,85 @@
 package com.tinixmusic.tinixmusic2
 
+import android.content.ComponentName
 import android.content.Context
+import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.ExoPlayer.Builder
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
+import androidx.core.content.ContextCompat
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 object PlayerManager {
-    private var exoPlayer: ExoPlayer? = null
-    private var currentSongUrl: String? = null
+    private var mediaController: MediaController? = null
 
-    fun getPlayer(context: Context): ExoPlayer {
-        if (exoPlayer == null) {
-            exoPlayer = ExoPlayer.Builder(context).build()
+    private val _isPlaying = MutableStateFlow(false)
+    val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
+
+    private val _currentUrl = MutableStateFlow<String?>(null)
+    val currentUrl: StateFlow<String?> = _currentUrl.asStateFlow()
+
+    fun connect(context: Context) {
+        if (mediaController != null) return
+
+        val sessionToken = SessionToken(
+            context,
+            ComponentName(context, PlaybackService::class.java)
+        )
+        val future = MediaController.Builder(context, sessionToken).buildAsync()
+        future.addListener({
+            mediaController = future.get()
+            mediaController?.addListener(object : Player.Listener {
+                override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    _isPlaying.value = isPlaying
+                }
+
+                override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                    _currentUrl.value = mediaItem?.localConfiguration?.uri?.toString()
+                }
+            })
+        }, ContextCompat.getMainExecutor(context))
+    }
+
+    fun togglePlayPause(
+        context: Context,
+        url: String,
+        title: String,
+        artist: String?,
+        imageUrl: String?
+    ) {
+        connect(context)
+        val controller = mediaController ?: return
+
+        val currentUri = controller.currentMediaItem?.localConfiguration?.uri?.toString()
+        if (currentUri == url) {
+            if (controller.isPlaying) {
+                controller.pause()
+            } else {
+                controller.play()
+            }
+        } else {
+            val mediaItem = MediaItem.Builder()
+                .setUri(url)
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setTitle(title)
+                        .setArtist(artist)
+                        .setArtworkUri(imageUrl?.toUri())
+                        .build()
+                )
+                .build()
+            controller.setMediaItem(mediaItem)
+            controller.prepare()
+            controller.play()
         }
-        return exoPlayer!!
-    }
-    fun playSong(context: Context , url: String){
-        val player= getPlayer(context)
-        if (currentSongUrl == url && player.isPlaying){
-            player.pause()
-        }else if (currentSongUrl == url && player.isPlaying){
-            player.play()
-        }else{
-            player.stop()
-            player.clearMediaItems()
-            player.setMediaItem(MediaItem.fromUri(url))
-            player.prepare()
-            player.play()
-            currentSongUrl = url
-        }
     }
 
-    fun isPlaying(url: String): Boolean{
-        return currentSongUrl == url && (exoPlayer?.isPlaying ?: false)
-    }
-
-    fun reLease(){
-        exoPlayer?.release()
-        exoPlayer = null
-        currentSongUrl = null
+    fun release() {
+        mediaController?.release()
+        mediaController = null
     }
 }
