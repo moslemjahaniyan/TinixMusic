@@ -14,7 +14,10 @@ import com.squareup.moshi.JsonClass
         @Json(name = "_embedded") val embedded: Embedded?,
 
         val artist: String?,
-        val music320: String?
+        val music320: String?,
+
+        //به خاطر اینکه این فیلد در SongRepository قرمز شد اینجا اضافه کردم
+        @Json(name = "music_versions") val musicVersions: List<String>? = null
 
     )
 @JsonClass(generateAdapter = true)

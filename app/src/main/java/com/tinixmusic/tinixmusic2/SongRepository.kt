@@ -32,14 +32,33 @@ object SongRepository {
         val posts = api.getSongs()
         return posts.map {it.toSong()}
     }
-    suspend fun WpPost.toSong(): Song{
+    private fun WpPost.toSong(): Song {
         val imageUrl = embedded?.featuredMedia?.firstOrNull()?.source_url
+
+        // Parse کردن ورژن‌ها
+        val versions = mutableListOf<SongVersion>()
+        musicVersions?.forEachIndexed { index, url ->
+            if (url.isNotBlank()) {
+                val typePair = MusicTypes.TYPES.getOrNull(index)
+                if (typePair != null) {
+                    versions.add(
+                        SongVersion(
+                            labelEn = typePair.first,
+                            labelFa = typePair.second,
+                            url = url
+                        )
+                    )
+                }
+            }
+        }
+
         return Song(
             id = id.toString(),
-            title = Html.fromHtml(title.rendered , Html.FROM_HTML_MODE_LEGACY).toString(),
+            title = Html.fromHtml(title.rendered, Html.FROM_HTML_MODE_LEGACY).toString(),
             artist = artist ?: "نامشخص",
             downloadUrl = music320 ?: "",
-            imageUrl = imageUrl
+            imageUrl = imageUrl,
+            versions = versions
         )
     }
 

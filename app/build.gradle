@@ -73,6 +73,19 @@ dependencies {
 // Coil (برای نمایش تصاویر از اینترنت)
     implementation 'io.coil-kt:coil-compose:2.4.0'
 
+    //Media3 (ExoPlayer)
+    implementation 'androidx.media3:media3-exoplayer:1.1.1'
+    implementation 'androidx.media3:media3-common:1.1.1'
+    implementation 'androidx.media3:media3-session:1.1.1'
+    // جدا اضافه شده
+    //implementation 'androidx.media3:media3-ui:1.1.1'
+
+
+    //آیکون های پایه جدا اضافه شد
+    implementation 'androidx.compose.material:material-icons-core'
+
+    //آیکون های اضافی شامل Pause , PlayArrow جدا اضافه شد
+    implementation 'androidx.compose.material:material-icons-extended'
 
     implementation 'androidx.core:core-ktx:1.8.0'
     implementation platform('org.jetbrains.kotlin:kotlin-bom:1.8.0')
