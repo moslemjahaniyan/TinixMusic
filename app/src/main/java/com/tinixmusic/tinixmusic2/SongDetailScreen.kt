@@ -41,6 +41,10 @@ import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 
 import androidx.compose.material.icons.filled.Pause
+
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+
 @Composable
 fun SongDetailScreen(songId: String?, navController: NavController) {
     var song by remember { mutableStateOf<Song?>(null) }
@@ -233,7 +237,19 @@ fun SongDetailScreen(songId: String?, navController: NavController) {
                 ) {
                     Text("بعدی")
                 }
+
+
+
             }
+
+
+            Spacer(modifier = Modifier.height(24.dp))
+            LyricsSection(song = currentSong)
+            Spacer(modifier = Modifier.height(32.dp))
+
+
+
+
         }
 
 
