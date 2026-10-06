@@ -36,7 +36,7 @@ import androidx.core.content.ContextCompat
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-
+import android.Manifest
 
 class MainActivity : ComponentActivity() {
     private val requestNotificationPermission = registerForActivityResult(
@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
         PlayerManager.connect(this)
 
         // ۲. درخواست مجوز Notification برای اندروید ۱۳+
-        /*
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(
                     this,
@@ -59,7 +59,7 @@ class MainActivity : ComponentActivity() {
                 requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
-         */
+
 
         setContent {
             val isDarkMode by SettingsRepository.isDarkMode(this)
@@ -80,6 +80,11 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("settings") {
                         SettingsScreen(navController = navController)
+                    }
+                    composable("artist/{artistName}"){navBackStackEntry ->
+                        val artistName = navBackStackEntry.arguments?.getString("artistName")
+                        ArtistScreen(artistName = artistName, navController = navController)
+
                     }
                 }
             }

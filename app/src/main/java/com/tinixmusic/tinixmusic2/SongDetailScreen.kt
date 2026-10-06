@@ -4,6 +4,7 @@ package com.tinixmusic.tinixmusic2
 
 import android.widget.Space
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -46,6 +47,8 @@ fun SongDetailScreen(songId: String?, navController: NavController) {
     var isLoading by remember { mutableStateOf(true)    }
     val context = LocalContext.current
 
+    val isPlaying by PlayerManager.isPlaying.collectAsState() // جدا اضافه شد
+    val currentUrl by PlayerManager.currentUrl.collectAsState()  // جدا اضافه شد
 
     LaunchedEffect(songId){
         try {
@@ -127,10 +130,23 @@ fun SongDetailScreen(songId: String?, navController: NavController) {
                     text = currentSong.title,
                     style = MaterialTheme.typography.headlineMedium
                 )
-                Text(
+
+                //اینو تغییر دادیم به زیریش
+                /*Text(
                     text = currentSong.artist ?: "خواننده نامشخص",
                     style = MaterialTheme.typography.bodyLarge
+                )*/
+                Text(
+                    text = currentSong.artist ?: "خواننده نامشخص",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.clickable {
+                        if (currentSong.artist != null && currentSong.artist != "نامشخص") {
+                            navController.navigate("artist/${currentSong.artist}")
+                        }
+                    }
                 )
+
             }
             IconButton(
                 onClick = {
@@ -161,6 +177,7 @@ fun SongDetailScreen(songId: String?, navController: NavController) {
         Spacer(modifier = Modifier.height(24.dp))
 
         // ====== دکمه‌ی پخش ورژن اصلی ======
+        /* کد زیر با زیری تر جایگزین شد
         if(currentSong.downloadUrl.isNotBlank()){
             Text(
                 text = "پخش آنلاین ورژن اصلی",
@@ -175,6 +192,82 @@ fun SongDetailScreen(songId: String?, navController: NavController) {
                 label = "پخش ورژن اصلی"
             )
         }
+
+         */
+
+        if(currentSong.downloadUrl.isNotBlank()){
+            Text(
+                text = "پخش آنلاین ورژن اصلی",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // دکمه‌ی Previous
+                OutlinedButton(
+                    onClick = { PlayerManager.skipPrevious() },
+                    modifier = Modifier.weight(1f),
+                    enabled = PlayerManager.hasPrevious()
+                ) {
+                    Text("قبلی")
+                }
+
+                // دکمه‌ی Play/Pause
+                PlayButton(
+                    url = currentSong.downloadUrl,
+                    title = currentSong.title,
+                    artist = currentSong.artist,
+                    imageUrl = currentSong.imageUrl,
+                    label = "پخش",
+                    modifier = Modifier.weight(1f)
+                )
+
+                // دکمه‌ی Next
+                OutlinedButton(
+                    onClick = { PlayerManager.skipNext() },
+                    modifier = Modifier.weight(1f),
+                    enabled = PlayerManager.hasNext()
+                ) {
+                    Text("بعدی")
+                }
+            }
+        }
+
+
+
+        // ✅✅✅ ==================== شروع کد جدید ==================== ✅✅✅
+
+// اضافه کن بعد از Row دکمه‌های پخش:
+        var currentPos by remember { mutableStateOf(0L) }
+        var totalDur by remember { mutableStateOf(0L) }
+
+        LaunchedEffect(currentUrl) {
+            while (true) {
+                currentPos = PlayerManager.getCurrentPosition()
+                totalDur = PlayerManager.getDuration()
+                delay(500)
+            }
+        }
+
+        if (totalDur > 0) {
+            LinearProgressIndicator(
+                progress = currentPos.toFloat() / totalDur.toFloat(),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("${currentPos / 1000}s", style = MaterialTheme.typography.bodySmall)
+                Text("${totalDur / 1000}s", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+
+        // ✅✅✅ ==================== پایان کد جدید ==================== ✅✅✅
+
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -220,26 +313,32 @@ fun PlayButton(
     title: String,
     artist: String?,
     imageUrl: String?,
-    label: String
+    label: String,
+    modifier: Modifier = Modifier
+
 ){
     val context = LocalContext.current
     val isPlaying by PlayerManager.isPlaying.collectAsState()
     val currentUrl by PlayerManager.currentUrl.collectAsState()
-    val playingThis = isPlaying && currentUrl == null
+    //val playingThis = isPlaying && currentUrl == null // 🔴 این خط عوض شد
+    val playingThis = isPlaying && currentUrl == url
+
 
 
     Button(
         onClick = {
                   PlayerManager.togglePlayPause(context , url,  title, artist, imageUrl )
         },
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier
     ) {
         Icon(
-            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+            //imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+            imageVector = if (playingThis) Icons.Default.Pause else Icons.Default.PlayArrow, // 🔴
             contentDescription = null
         )
         Spacer(modifier = Modifier.width(8.dp))
-        Text(if (isPlaying) "توقف" else label)
+        Text(if (playingThis) "توقف" else label)
+
 
     }
 }
@@ -278,8 +377,16 @@ fun VersionRow(
                 )
             }
         ) {
+            /*
+            //تبدیل کردم به کد زیرتر
             Icon(
                 imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                contentDescription = null
+            )
+
+             */
+            Icon(
+                imageVector = if (playingThis) Icons.Default.Pause else Icons.Default.PlayArrow,
                 contentDescription = null
             )
         }

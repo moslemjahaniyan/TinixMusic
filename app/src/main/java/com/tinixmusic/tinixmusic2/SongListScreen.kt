@@ -22,6 +22,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
@@ -109,6 +110,7 @@ fun SongListScreen(navController: NavController, viewModel: SongListViewModel = 
             )
         }
 
+        /*
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
@@ -121,6 +123,40 @@ fun SongListScreen(navController: NavController, viewModel: SongListViewModel = 
             },
             singleLine = true
         )
+
+
+         */
+
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            placeholder = { Text("جستجوی آهنگ یا خواننده...") },
+            leadingIcon = {
+                Icon(Icons.Default.Search, contentDescription = null)
+            },
+            singleLine = true
+        )
+
+        // ============ 👇 این رو اینجا اضافه کن 👇 ============
+        if (songs.isNotEmpty()) {
+            Button(
+                onClick = {
+                    PlayerManager.playPlaylist(context, songs)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                Icon(Icons.Default.PlayArrow, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("پخش همه (${songs.size} آهنگ)")
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+        // ============ 👆 پایان کد اضافه شده 👆 ============
 
 
 

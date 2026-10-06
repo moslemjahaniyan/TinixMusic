@@ -78,6 +78,53 @@ object PlayerManager {
         }
     }
 
+
+
+    fun playPlaylist(
+        context: Context,
+        songs: List<Song>,
+        startIndex: Int = 0
+    ){
+        connect(context)
+        val controller = mediaController ?: return
+        val mediaItems = songs.map { song ->
+            MediaItem.Builder()
+                .setUri(song.downloadUrl)
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setTitle(song.title)
+                        .setArtist(song.artist)
+                        .setArtworkUri(song.imageUrl?.toUri())
+                        .build()
+                )
+                .build()
+        }
+        controller.setMediaItems(mediaItems, startIndex, 0L)
+        controller.prepare()
+        controller.play()    }
+
+    fun skipNext(){
+        mediaController?.seekToNextMediaItem()
+    }
+
+    fun skipPrevious(){
+        mediaController?.seekToPreviousMediaItem()
+    }
+
+    fun hasNext(): Boolean = mediaController?.hasNextMediaItem() ?: false
+    fun hasPrevious(): Boolean = mediaController?.hasPreviousMediaItem() ?: false
+
+
+
+
+
+    // در PlayerManager.kt:
+    fun getCurrentPosition(): Long = mediaController?.currentPosition ?: 0L
+    fun getDuration(): Long = mediaController?.duration ?: 0L
+
+
+
+
     fun release() {
         mediaController?.release()
         mediaController = null

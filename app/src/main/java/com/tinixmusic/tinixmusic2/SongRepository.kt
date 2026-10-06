@@ -62,4 +62,10 @@ object SongRepository {
         )
     }
 
+    suspend fun getSongByArtist(artist: String): List<Song>{
+        return getSong().filter { song ->
+            song.artist?.contains(artist,ignoreCase = true) == true
+        }
+    }
+
 }
