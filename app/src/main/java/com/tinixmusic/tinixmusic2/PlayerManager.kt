@@ -49,21 +49,24 @@ object PlayerManager {
         url: String,
         title: String,
         artist: String?,
-        imageUrl: String?
+        imageUrl: String?,
+        localPath: String? = null
     ) {
         connect(context)
         val controller = mediaController ?: return
 
+        val playUrl = if (localPath != null && java.io.File(localPath).exists()) {
+            "file://$localPath"
+        } else {
+            url
+        }
+
         val currentUri = controller.currentMediaItem?.localConfiguration?.uri?.toString()
-        if (currentUri == url) {
-            if (controller.isPlaying) {
-                controller.pause()
-            } else {
-                controller.play()
-            }
+        if (currentUri == playUrl) {
+            if (controller.isPlaying) controller.pause() else controller.play()
         } else {
             val mediaItem = MediaItem.Builder()
-                .setUri(url)
+                .setUri(playUrl)
                 .setMediaMetadata(
                     MediaMetadata.Builder()
                         .setTitle(title)

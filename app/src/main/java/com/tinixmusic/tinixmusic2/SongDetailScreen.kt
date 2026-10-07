@@ -3,6 +3,7 @@ package com.tinixmusic.tinixmusic2
 
 
 import android.widget.Space
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -44,6 +45,10 @@ import androidx.compose.material.icons.filled.Pause
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.DownloadDone
+import androidx.compose.material.icons.filled.Delete
 
 @Composable
 fun SongDetailScreen(songId: String?, navController: NavController) {
@@ -206,6 +211,22 @@ fun SongDetailScreen(songId: String?, navController: NavController) {
             )
             Spacer(modifier = Modifier.height(8.dp))
 
+
+
+            var isDownloaded by remember { mutableStateOf(false) }
+            var localPath by remember { mutableStateOf<String?>(null) }
+
+            LaunchedEffect(currentSong.id) {
+                isDownloaded = DownloadRepository.isDownloaded(context, currentSong.id)
+                localPath = if (isDownloaded) {
+                    DownloadRepository.getLocalPath(context, currentSong.id)
+                } else {
+                    null
+                }
+            }
+
+
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -226,7 +247,7 @@ fun SongDetailScreen(songId: String?, navController: NavController) {
                     artist = currentSong.artist,
                     imageUrl = currentSong.imageUrl,
                     label = "پخش",
-                    modifier = Modifier.weight(1f)
+                    localPath = localPath
                 )
 
                 // دکمه‌ی Next
@@ -241,6 +262,59 @@ fun SongDetailScreen(songId: String?, navController: NavController) {
 
 
             }
+
+
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (isDownloaded) {
+                    // دکمه‌ی حذف دانلود
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                DownloadRepository.deleteDownload(context, currentSong.id)
+                                isDownloaded = false
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("حذف دانلود")
+                    }
+                } else {
+                    // دکمه‌ی دانلود
+                    Button(
+                        onClick = {
+                            DownloadRepository.startDownload(
+                                context = context,
+                                song = currentSong,
+                                url = currentSong.downloadUrl
+                            )
+                            Toast.makeText(context, "دانلود در پس‌زمینه شروع شد", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.Download, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("دانلود")
+                    }
+                }
+            }
+
+
+
+
+
+
+
+
+
+
 
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -330,6 +404,7 @@ fun PlayButton(
     artist: String?,
     imageUrl: String?,
     label: String,
+    localPath: String? = null,
     modifier: Modifier = Modifier
 
 ){
@@ -343,7 +418,7 @@ fun PlayButton(
 
     Button(
         onClick = {
-                  PlayerManager.togglePlayPause(context , url,  title, artist, imageUrl )
+                  PlayerManager.togglePlayPause(context , url,  title, artist, imageUrl, localPath )
         },
         modifier = modifier
     ) {

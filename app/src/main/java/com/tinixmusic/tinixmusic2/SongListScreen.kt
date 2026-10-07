@@ -61,6 +61,12 @@ fun SongListScreen(navController: NavController, viewModel: SongListViewModel = 
     val context = LocalContext.current
     val favorites by FavoritesRepository.getFavorite(context).collectAsState(initial = emptySet())
 
+
+    // 👇 این خط رو اضافه کن
+    val downloadedSongs by DownloadRepository.getDownloadedSongs(context)
+        .collectAsState(initial = emptyList())
+
+
     var searchQuery by remember { mutableStateOf("") }
 
     var selectedTab by remember { mutableStateOf(0) } // 👈 گیومه‌ها حذف شدند
@@ -69,12 +75,24 @@ fun SongListScreen(navController: NavController, viewModel: SongListViewModel = 
 
 
 
-    // انتخاب لیست بر اساس تب
-    val songsBasedOnTab = if (selectedTab == 1){
-        allSongs.filter {it.id in favorites}
-    } else{
-        allSongs
+// انتخاب لیست بر اساس تب
+    val songsBasedOnTab = when (selectedTab) {
+        1 -> allSongs.filter { it.id in favorites }
+        2 -> downloadedSongs.map { downloaded ->
+            allSongs.find { it.id == downloaded.songId } ?: Song(
+                id = downloaded.songId,
+                title = downloaded.title,
+                artist = downloaded.artist,
+                downloadUrl = downloaded.localPath,
+                imageUrl = downloaded.imageUrl
+            )
+        }
+        else -> allSongs
     }
+
+
+
+
 
     // اعمال جستجو
     val songs = if (searchQuery.isBlank()){
@@ -98,16 +116,15 @@ fun SongListScreen(navController: NavController, viewModel: SongListViewModel = 
         )
 
         TabRow(selectedTabIndex = selectedTab) {
-            Tab(
-                selected = selectedTab == 0,
-                onClick = { selectedTab = 0 },
-                text = { Text("همه آهنگ‌ها") }
-            )
-            Tab(
-                selected = selectedTab == 1,
-                onClick = { selectedTab = 1 },
-                text = { Text("علاقه‌مندی‌ها (${favorites.size})") }
-            )
+            Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
+                Text("همه آهنگ‌ها")
+            }
+            Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
+                Text("علاقه‌مندی‌ها (${favorites.size})")
+            }
+            Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }) {
+                Text("دانلودشده‌ها")
+            }
         }
 
         /*

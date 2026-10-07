@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">نمایش عبارت‌ها</string>
+    <string name="app_name">تینیکس موزیک</string>
     <string name="title">عبارت‌ها در برابر دستورها</string>
     <string name="input_label">ورودی را وارد کنید (u، d، 42 یا متن)</string>
     <string name="if_result">عبارت if: %1$d</string>
