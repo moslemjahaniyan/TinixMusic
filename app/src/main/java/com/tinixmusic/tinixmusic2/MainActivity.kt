@@ -37,6 +37,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import android.Manifest
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+
 
 class MainActivity : ComponentActivity() {
     private val requestNotificationPermission = registerForActivityResult(
@@ -69,23 +72,29 @@ class MainActivity : ComponentActivity() {
                 colorScheme = if (isDarkMode) darkColorScheme() else lightColorScheme()
             ) {
                 val navController = rememberNavController()
-                NavHost(navController = navController, startDestination = "songList"){
-                    composable("songList"){
-                        SongListScreen(navController = navController)
+                Box(modifier = Modifier.fillMaxSize()) {
+                    NavHost(navController = navController, startDestination = "songList") {
+                        composable("songList") {
+                            SongListScreen(navController = navController)
+                        }
+                        composable("songDetail/{songId}") { backStackEntry ->
+                            val songId = backStackEntry.arguments?.getString("songId")
+                            SongDetailScreen(songId = songId, navController = navController)
+                        }
+                        composable("settings") {
+                            SettingsScreen(navController = navController)
+                        }
+                        composable("artist/{artistName}") { navBackStackEntry ->
+                            val artistName = navBackStackEntry.arguments?.getString("artistName")
+                            ArtistScreen(artistName = artistName, navController = navController)
+                        }
                     }
-                    composable("songDetail/{songId}"){backStackEntry ->
-                        val songId = backStackEntry.arguments?.getString("songId")
-                        SongDetailScreen(songId = songId , navController = navController)
 
-                    }
-                    composable("settings") {
-                        SettingsScreen(navController = navController)
-                    }
-                    composable("artist/{artistName}"){navBackStackEntry ->
-                        val artistName = navBackStackEntry.arguments?.getString("artistName")
-                        ArtistScreen(artistName = artistName, navController = navController)
-
-                    }
+                    // ✅ Mini Player روی همه‌ی صفحه‌ها
+                    MiniPlayer(
+                        navController = navController,
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                    )
                 }
             }
         }

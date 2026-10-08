@@ -12,6 +12,23 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+
+
+data class NowPlaying(
+    val songId: String,
+    val title: String,
+    val artist: String?,
+    val imageUrl: String?,
+    val url: String
+)
+
+
 
 object PlayerManager {
     private var mediaController: MediaController? = null
@@ -20,6 +37,8 @@ object PlayerManager {
     val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
 
     private val _currentUrl = MutableStateFlow<String?>(null)
+    private val _nowPlaying = MutableStateFlow<NowPlaying?>(null)
+    val nowPlaying: StateFlow<NowPlaying?> = _nowPlaying.asStateFlow()
     val currentUrl: StateFlow<String?> = _currentUrl.asStateFlow()
 
     fun connect(context: Context) {
@@ -38,7 +57,18 @@ object PlayerManager {
                 }
 
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                    _currentUrl.value = mediaItem?.localConfiguration?.uri?.toString()
+                    val url = mediaItem?.localConfiguration?.uri?.toString()
+                    _currentUrl.value = url
+
+                    if (mediaItem != null && url != null) {
+                        _nowPlaying.value = NowPlaying(
+                            songId = mediaItem.mediaId,
+                            title = mediaItem.mediaMetadata.title?.toString() ?: "",
+                            artist = mediaItem.mediaMetadata.artist?.toString(),
+                            imageUrl = mediaItem.mediaMetadata.artworkUri?.toString(),
+                            url = url
+                        )
+                    }
                 }
             })
         }, ContextCompat.getMainExecutor(context))
@@ -46,6 +76,7 @@ object PlayerManager {
 
     fun togglePlayPause(
         context: Context,
+        songId: String,
         url: String,
         title: String,
         artist: String?,
@@ -67,6 +98,7 @@ object PlayerManager {
         } else {
             val mediaItem = MediaItem.Builder()
                 .setUri(playUrl)
+                .setMediaId(songId) // ✅ اضافه شد
                 .setMediaMetadata(
                     MediaMetadata.Builder()
                         .setTitle(title)
@@ -82,7 +114,6 @@ object PlayerManager {
     }
 
 
-
     fun playPlaylist(
         context: Context,
         songs: List<Song>,
@@ -91,7 +122,7 @@ object PlayerManager {
         connect(context)
         val controller = mediaController ?: return
         val mediaItems = songs.map { song ->
-            MediaItem.Builder()
+            MediaItem.Builder().setMediaId(song.id)
                 .setUri(song.downloadUrl)
                 .setMediaMetadata(
                     MediaMetadata.Builder()
@@ -128,8 +159,44 @@ object PlayerManager {
 
 
 
+    private var sleepTimerJob: Job? = null
+    private val _sleepTimerRemaining = MutableStateFlow<Long?>(null)
+    val sleepTimerRemaining: StateFlow<Long?> = _sleepTimerRemaining.asStateFlow()
+
+    fun startSleepTimer(minutes: Int) {
+        cancelSleepTimer()
+        val totalMs = minutes * 60_000L
+        sleepTimerJob = CoroutineScope(Dispatchers.Default).launch {
+            var remaining = totalMs
+            while (remaining > 0) {
+                _sleepTimerRemaining.value = remaining
+                delay(1000)
+                remaining -= 1000
+            }
+            // تایمر تموم شد → Pause کن
+            mediaController?.pause()
+            _sleepTimerRemaining.value = null
+        }
+    }
+
+    fun cancelSleepTimer() {
+        sleepTimerJob?.cancel()
+        sleepTimerJob = null
+        _sleepTimerRemaining.value = null
+    }
+
+
+
     fun release() {
         mediaController?.release()
         mediaController = null
+        _nowPlaying.value = null
     }
+
+
+
+
+
+
+
 }

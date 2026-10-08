@@ -179,8 +179,10 @@ fun SongListScreen(navController: NavController, viewModel: SongListViewModel = 
 
         when {
             isLoading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                LazyColumn {
+                    items(6) {
+                        ShimmerSongItem()
+                    }
                 }
             }
             error != null -> {

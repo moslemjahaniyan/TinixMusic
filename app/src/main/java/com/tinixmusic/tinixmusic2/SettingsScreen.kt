@@ -15,6 +15,18 @@ import kotlinx.coroutines.launch
 
 import androidx.compose.material3.Divider
 
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
+import kotlinx.coroutines.delay
+
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.ui.text.font.FontWeight
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(navController: NavController) {
@@ -96,6 +108,78 @@ fun SettingsScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(24.dp))
             Divider()
             Spacer(modifier = Modifier.height(24.dp))
+
+
+
+            Spacer(modifier = Modifier.height(24.dp))
+            Divider()
+            Spacer(modifier = Modifier.height(24.dp))
+
+// ===== Sleep Timer =====
+            Text(
+                "تایمر خواب",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val sleepRemaining by PlayerManager.sleepTimerRemaining.collectAsState()
+
+            if (sleepRemaining == null) {
+                // دکمه‌های تنظیم تایمر
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(15, 30, 60, 90).forEach { minutes ->
+                        OutlinedButton(
+                            onClick = { PlayerManager.startSleepTimer(minutes) },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("$minutes دقیقه")
+                        }
+                    }
+                }
+            } else {
+                // نمایش زمان باقی‌مونده
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Timer,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        val totalSec = (sleepRemaining ?: 0L) / 1000
+                        val mins = totalSec / 60
+                        val secs = totalSec % 60
+                        Text(
+                            text = String.format("%02d:%02d", mins, secs),
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = { PlayerManager.cancelSleepTimer() }
+                        ) {
+                            Text("لغو تایمر")
+                        }
+                    }
+                }
+            }
+
+
+
+
 
             // دکمه‌ی پاک کردن کش
             Button(

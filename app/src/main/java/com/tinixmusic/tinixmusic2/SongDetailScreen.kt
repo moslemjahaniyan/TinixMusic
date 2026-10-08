@@ -50,6 +50,11 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Delete
 
+import android.content.Intent
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.OutlinedButton
+
+
 @Composable
 fun SongDetailScreen(songId: String?, navController: NavController) {
     var song by remember { mutableStateOf<Song?>(null) }
@@ -242,6 +247,7 @@ fun SongDetailScreen(songId: String?, navController: NavController) {
 
                 // دکمه‌ی Play/Pause
                 PlayButton(
+                    songId = currentSong.id,  // ✅ اضافه شد
                     url = currentSong.downloadUrl,
                     title = currentSong.title,
                     artist = currentSong.artist,
@@ -263,6 +269,32 @@ fun SongDetailScreen(songId: String?, navController: NavController) {
 
             }
 
+
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+// دکمه‌ی اشتراک‌گذاری
+            OutlinedButton(
+                onClick = {
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(
+                            Intent.EXTRA_TEXT,
+                            "🎵 ${currentSong.title} - ${currentSong.artist}\n\n" +
+                                    "📥 دانلود از تینیکس موزیک:\n" +
+                                    "https://tinixmusic.ir/?p=${currentSong.id}"
+                        )
+                        putExtra(Intent.EXTRA_SUBJECT, currentSong.title)
+                    }
+                    val chooser = Intent.createChooser(shareIntent, "اشتراک‌گذاری با...")
+                    context.startActivity(chooser)
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Share, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("اشتراک‌گذاری")
+            }
 
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -373,6 +405,7 @@ fun SongDetailScreen(songId: String?, navController: NavController) {
             
             currentSong.versions.forEach{version ->
                 VersionRow(
+                    songId = currentSong.id,  // ✅ اضافه شد
                     version = version,
                     title = currentSong.title,
                     artist = currentSong.artist,
@@ -399,6 +432,7 @@ fun SongDetailScreen(songId: String?, navController: NavController) {
 
 @Composable
 fun PlayButton(
+    songId: String,
     url: String,
     title: String,
     artist: String?,
@@ -406,50 +440,52 @@ fun PlayButton(
     label: String,
     localPath: String? = null,
     modifier: Modifier = Modifier
-
-){
+) {
     val context = LocalContext.current
     val isPlaying by PlayerManager.isPlaying.collectAsState()
     val currentUrl by PlayerManager.currentUrl.collectAsState()
-    //val playingThis = isPlaying && currentUrl == null // 🔴 این خط عوض شد
     val playingThis = isPlaying && currentUrl == url
-
-
 
     Button(
         onClick = {
-                  PlayerManager.togglePlayPause(context , url,  title, artist, imageUrl, localPath )
+            PlayerManager.togglePlayPause(
+                context = context,
+                songId = songId,
+                url = url,
+                title = title,
+                artist = artist,
+                imageUrl = imageUrl,
+                localPath = localPath
+            )
         },
         modifier = modifier
     ) {
         Icon(
-            //imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-            imageVector = if (playingThis) Icons.Default.Pause else Icons.Default.PlayArrow, // 🔴
+            imageVector = if (playingThis) Icons.Default.Pause else Icons.Default.PlayArrow,
             contentDescription = null
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(if (playingThis) "توقف" else label)
-
-
     }
 }
 
 @Composable
 fun VersionRow(
+    songId: String,
     version: SongVersion,
     title: String,
     artist: String?,
     imageUrl: String?
-){
+) {
     val context = LocalContext.current
     val isPlaying by PlayerManager.isPlaying.collectAsState()
     val currentUrl by PlayerManager.currentUrl.collectAsState()
     val playingThis = isPlaying && currentUrl == version.url
 
-
-    Row(modifier = Modifier
-        .fillMaxWidth()
-        .padding(vertical = 4.dp),
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -460,22 +496,15 @@ fun VersionRow(
         IconButton(
             onClick = {
                 PlayerManager.togglePlayPause(
-                    context,
-                    version.url,
-                    "$title - ${version.labelFa}",
-                    artist,
-                    imageUrl
+                    context = context,
+                    songId = songId,
+                    url = version.url,
+                    title = "$title - ${version.labelFa}",
+                    artist = artist,
+                    imageUrl = imageUrl
                 )
             }
         ) {
-            /*
-            //تبدیل کردم به کد زیرتر
-            Icon(
-                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                contentDescription = null
-            )
-
-             */
             Icon(
                 imageVector = if (playingThis) Icons.Default.Pause else Icons.Default.PlayArrow,
                 contentDescription = null
