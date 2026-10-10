@@ -42,6 +42,9 @@ fun ArtistScreen(artistName: String?, navController: NavController) {
         }
     }
 
+    val playingId by PlayerManager.currentSongId.collectAsState()
+    val isPlaying by PlayerManager.isPlaying.collectAsState()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -63,6 +66,7 @@ fun ArtistScreen(artistName: String?, navController: NavController) {
                     CircularProgressIndicator()
                 }
             }
+
             songs.isEmpty() -> {
                 Box(
                     modifier = Modifier.fillMaxSize().padding(padding),
@@ -71,6 +75,7 @@ fun ArtistScreen(artistName: String?, navController: NavController) {
                     Text("هیچ آهنگی از این خواننده پیدا نشد")
                 }
             }
+
             else -> {
                 // 👇 دکمه‌ی «پخش همه»
                 Button(
@@ -83,25 +88,35 @@ fun ArtistScreen(artistName: String?, navController: NavController) {
                 ) {
                     Icon(Icons.Default.PlayArrow, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("پخش همه (${songs.size} آهنگ)")
+                    Text("پخش همه")                // ✅ تعداد حذف شد
                 }
 
-                // 👇 لیست آهنگ‌ها (بدون padding چون Column خودش padding داره)
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(songs) { song ->
+                    items(songs, key = { it.id }) { song ->
                         SongItem(
                             song = song,
                             onClick = {
                                 navController.navigate("songDetail/${song.id}")
-                            }
+                            },
+                            onPlayClick = {
+                                PlayerManager.togglePlayPause(
+                                    context = context,
+                                    songId = song.id,
+                                    url = song.downloadUrl,
+                                    title = song.title,
+                                    artist = song.artist,
+                                    imageUrl = song.imageUrl,
+                                    playlist = songs           // ✅ صف = آهنگ‌های همین خواننده
+                                )
+                            },
+                            isPlayingThis = isPlaying && playingId == song.id
                         )
                     }
                 }
-            }
 
 
                 //بلوک زیر با بلوک بالا جایگزین شد
-        /* {
+                /* {
                 LazyColumn(modifier = Modifier.padding(padding)) {
                     items(songs) { song ->
                         SongItem(
@@ -114,6 +129,7 @@ fun ArtistScreen(artistName: String?, navController: NavController) {
                 }
             }
             */
+            }
         }
     }
 }

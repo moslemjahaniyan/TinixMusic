@@ -54,47 +54,76 @@ import android.content.Intent
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.OutlinedButton
 
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
+import com.tinixmusic.tinixmusic2.PlayerManager.currentUrl
+
 
 @Composable
 fun SongDetailScreen(songId: String?, navController: NavController) {
-    var song by remember { mutableStateOf<Song?>(null) }
-    var isLoading by remember { mutableStateOf(true)    }
+    var allSongs by remember { mutableStateOf<List<Song>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
     val context = LocalContext.current
 
-    val isPlaying by PlayerManager.isPlaying.collectAsState() // جدا اضافه شد
-    val currentUrl by PlayerManager.currentUrl.collectAsState()  // جدا اضافه شد
+    // آهنگی که در این صفحه نمایش داده می‌شه (با پارامتر مسیر شروع می‌شه)
+    var displayedSongId by remember(songId) { mutableStateOf(songId) }
 
-    LaunchedEffect(songId){
+    // آهنگ در حال پخش و آخرین مقداری که دیدیم
+    val currentPlayingSongId by PlayerManager.currentSongId.collectAsState()
+    var lastKnownPlayingId by remember { mutableStateOf(currentPlayingSongId) }
+
+    // ۱. لود کردن کل آهنگ‌ها یه بار
+    LaunchedEffect(Unit) {
         try {
-            val allSongs = SongRepository.getSong()
-            song = allSongs.find { it.id == songId }
-        } catch (e: Exception){
-            // خطا رو نادیده می‌گیریم یا نمایش می‌دیم
-        }finally {
+            allSongs = SongRepository.getSong()
+        } catch (e: Exception) {
+            // نادیده بگیر
+        } finally {
             isLoading = false
         }
     }
 
-    if (isLoading){
-        Box(modifier = Modifier.fillMaxSize() , contentAlignment = Alignment.Center){
+    // ۲. هر بار آهنگ در حال پخش به یه آهنگ *جدید* تغییر کرد، صفحه رو همراهش کن
+    LaunchedEffect(currentPlayingSongId, allSongs) {
+        if (allSongs.isEmpty()) return@LaunchedEffect
+        val playingId = currentPlayingSongId ?: return@LaunchedEffect
+
+        // فقط اگه واقعاً از آهنگ قبلی به یه آهنگ جدید رفته باشه (نه اینکه کاربر تازه اومده)
+        if (playingId != lastKnownPlayingId && playingId != displayedSongId) {
+            if (allSongs.any { it.id == playingId }) {
+                displayedSongId = playingId
+            }
+        }
+        lastKnownPlayingId = playingId
+    }
+
+    if (isLoading) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
         return
     }
 
-    val currentSong = song
-    if (currentSong == null){
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center){
+    // آهنگ فعلی رو از روی displayedSongId پیدا کن
+    val currentSong = allSongs.find { it.id == displayedSongId }
+    if (currentSong == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("آهنگ پیدا نشد")
         }
         return
     }
 
+    // ⬇️⬇️⬇️ از اینجا به بعد کد قبلی خودت بدون تغییر ⬇️⬇️⬇️
+    // (Column، AsyncImage، favorites، PlayButton، LyricsSection، VersionRow و ...)
+    // نکته: چون currentSong حالا از displayedSongId حساب می‌شه،
+    // همه‌ی UI خودکار با آهنگ جدید آپدیت می‌شه.
 
     Column(modifier = Modifier
         .fillMaxSize()
         .verticalScroll(rememberScrollState())
         .padding(16.dp)) {
+        // ... بقیه بدون تغییر {
         // دکمه‌ی بازگشت
         IconButton(onClick = { navController.popBackStack() }) {
             Icon(
@@ -178,16 +207,6 @@ fun SongDetailScreen(songId: String?, navController: NavController) {
         }
         //پایان این را بزار
 
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-
-
-        Text(
-            text = "لینک دانلود: ${currentSong.downloadUrl}",
-            style = MaterialTheme.typography.bodySmall
-        )
-
         Spacer(modifier = Modifier.height(24.dp))
 
         // ====== دکمه‌ی پخش ورژن اصلی ======
@@ -247,13 +266,14 @@ fun SongDetailScreen(songId: String?, navController: NavController) {
 
                 // دکمه‌ی Play/Pause
                 PlayButton(
-                    songId = currentSong.id,  // ✅ اضافه شد
+                    songId = currentSong.id,
                     url = currentSong.downloadUrl,
                     title = currentSong.title,
                     artist = currentSong.artist,
                     imageUrl = currentSong.imageUrl,
                     label = "پخش",
-                    localPath = localPath
+                    localPath = localPath,
+                    playlist = allSongs           // ✅ اضافه شد
                 )
 
                 // دکمه‌ی Next
@@ -267,6 +287,46 @@ fun SongDetailScreen(songId: String?, navController: NavController) {
 
 
 
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+// Shuffle و Repeat
+            val isShuffleOn by PlayerManager.isShuffleOn.collectAsState()
+            val repeatMode by PlayerManager.repeatMode.collectAsState()
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                // Shuffle
+                IconButton(onClick = { PlayerManager.toggleShuffle() }) {
+                    Icon(
+                        imageVector = Icons.Default.Shuffle,
+                        contentDescription = "پخش تصادفی",
+                        tint = if (isShuffleOn) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
+
+                // Repeat
+                IconButton(onClick = { PlayerManager.cycleRepeatMode() }) {
+                    Icon(
+                        imageVector = when (repeatMode) {
+                            RepeatMode.REPEAT_ONE -> Icons.Default.RepeatOne
+                            else -> Icons.Default.Repeat
+                        },
+                        contentDescription = "تکرار",
+                        tint = if (repeatMode != RepeatMode.OFF) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
             }
 
 
@@ -360,36 +420,6 @@ fun SongDetailScreen(songId: String?, navController: NavController) {
 
 
 
-        // ✅✅✅ ==================== شروع کد جدید ==================== ✅✅✅
-
-// اضافه کن بعد از Row دکمه‌های پخش:
-        var currentPos by remember { mutableStateOf(0L) }
-        var totalDur by remember { mutableStateOf(0L) }
-
-        LaunchedEffect(currentUrl) {
-            while (true) {
-                currentPos = PlayerManager.getCurrentPosition()
-                totalDur = PlayerManager.getDuration()
-                delay(500)
-            }
-        }
-
-        if (totalDur > 0) {
-            LinearProgressIndicator(
-                progress = currentPos.toFloat() / totalDur.toFloat(),
-                modifier = Modifier.fillMaxWidth()
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("${currentPos / 1000}s", style = MaterialTheme.typography.bodySmall)
-                Text("${totalDur / 1000}s", style = MaterialTheme.typography.bodySmall)
-            }
-        }
-
-        // ✅✅✅ ==================== پایان کد جدید ==================== ✅✅✅
-
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -439,12 +469,13 @@ fun PlayButton(
     imageUrl: String?,
     label: String,
     localPath: String? = null,
+    playlist: List<Song>? = null,     // ✅ جدید
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val isPlaying by PlayerManager.isPlaying.collectAsState()
-    val currentUrl by PlayerManager.currentUrl.collectAsState()
-    val playingThis = isPlaying && currentUrl == url
+    val currentSongId by PlayerManager.currentSongId.collectAsState()
+    val playingThis = isPlaying && currentSongId == songId
 
     Button(
         onClick = {
@@ -455,7 +486,8 @@ fun PlayButton(
                 title = title,
                 artist = artist,
                 imageUrl = imageUrl,
-                localPath = localPath
+                localPath = localPath,
+                playlist = playlist       // ✅ پاس بده
             )
         },
         modifier = modifier
@@ -479,8 +511,10 @@ fun VersionRow(
 ) {
     val context = LocalContext.current
     val isPlaying by PlayerManager.isPlaying.collectAsState()
-    val currentUrl by PlayerManager.currentUrl.collectAsState()
-    val playingThis = isPlaying && currentUrl == version.url
+    val currentSongId by PlayerManager.currentSongId.collectAsState()
+    // برای هر ورژن، یه songId مجازی بساز تا از نسخه‌ی اصلی جدا باشه
+    val versionMediaId = "${songId}_${version.labelEn}"
+    val playingThis = isPlaying && currentSongId == versionMediaId
 
     Row(
         modifier = Modifier
@@ -497,7 +531,7 @@ fun VersionRow(
             onClick = {
                 PlayerManager.togglePlayPause(
                     context = context,
-                    songId = songId,
+                    songId = versionMediaId,   // ✅ آیدی یونیک برای هر ورژن
                     url = version.url,
                     title = "$title - ${version.labelFa}",
                     artist = artist,

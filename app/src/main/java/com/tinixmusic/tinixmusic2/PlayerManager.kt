@@ -19,6 +19,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 
+enum class RepeatMode(val label: String) {
+    OFF("بدون تکرار"),
+    REPEAT_ALL("تکرار همه"),
+    REPEAT_ONE("تکرار یکی")
+}
 
 data class NowPlaying(
     val songId: String,
@@ -41,6 +46,11 @@ object PlayerManager {
     val nowPlaying: StateFlow<NowPlaying?> = _nowPlaying.asStateFlow()
     val currentUrl: StateFlow<String?> = _currentUrl.asStateFlow()
 
+    private val _currentSongId = MutableStateFlow<String?>(null)
+    val currentSongId: StateFlow<String?> = _currentSongId.asStateFlow()
+
+
+
     fun connect(context: Context) {
         if (mediaController != null) return
 
@@ -52,26 +62,44 @@ object PlayerManager {
         future.addListener({
             mediaController = future.get()
             mediaController?.addListener(object : Player.Listener {
+
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     _isPlaying.value = isPlaying
                 }
 
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                    val url = mediaItem?.localConfiguration?.uri?.toString()
-                    _currentUrl.value = url
+                    syncNowPlaying(mediaItem)
+                }
 
-                    if (mediaItem != null && url != null) {
-                        _nowPlaying.value = NowPlaying(
-                            songId = mediaItem.mediaId,
-                            title = mediaItem.mediaMetadata.title?.toString() ?: "",
-                            artist = mediaItem.mediaMetadata.artist?.toString(),
-                            imageUrl = mediaItem.mediaMetadata.artworkUri?.toString(),
-                            url = url
-                        )
-                    }
+                // ✅ این‌ها هم اضافه شدن تا هیچ تغییری از دست نره
+                override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
+                    syncNowPlaying(mediaController?.currentMediaItem)
+                }
+
+                override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
+                    syncNowPlaying(mediaController?.currentMediaItem)
                 }
             })
         }, ContextCompat.getMainExecutor(context))
+    }
+
+    /** خواندن اطلاعات آهنگ فعلی از روی MediaItem و به‌روزرسانی Stateها */
+    private fun syncNowPlaying(mediaItem: MediaItem?) {
+        if (mediaItem == null) return
+
+        val url = mediaItem.localConfiguration?.uri?.toString()
+
+        _currentUrl.value = url
+        _currentSongId.value = mediaItem.mediaId
+
+        // ✅ مهم: مستقل از url هم NowPlaying رو آپدیت کن
+        _nowPlaying.value = NowPlaying(
+            songId = mediaItem.mediaId,
+            title = mediaItem.mediaMetadata.title?.toString() ?: "",
+            artist = mediaItem.mediaMetadata.artist?.toString(),
+            imageUrl = mediaItem.mediaMetadata.artworkUri?.toString(),
+            url = url ?: ""
+        )
     }
 
     fun togglePlayPause(
@@ -81,38 +109,69 @@ object PlayerManager {
         title: String,
         artist: String?,
         imageUrl: String?,
-        localPath: String? = null
+        localPath: String? = null,
+        playlist: List<Song>? = null       // ✅ جدید
     ) {
         connect(context)
         val controller = mediaController ?: return
 
-        val playUrl = if (localPath != null && java.io.File(localPath).exists()) {
-            "file://$localPath"
-        } else {
-            url
+        val playUrl = when {
+            localPath.isNullOrBlank() -> url
+            localPath.startsWith("content://") || localPath.startsWith("file://") -> localPath
+            java.io.File(localPath).exists() -> "file://$localPath"
+            else -> url
         }
 
-        val currentUri = controller.currentMediaItem?.localConfiguration?.uri?.toString()
-        if (currentUri == playUrl) {
+        val currentMediaId = controller.currentMediaItem?.mediaId
+
+        // ۱. همین آهنگ در حال پخشه → فقط toggle کن
+        if (currentMediaId == songId) {
             if (controller.isPlaying) controller.pause() else controller.play()
-        } else {
-            val mediaItem = MediaItem.Builder()
-                .setUri(playUrl)
-                .setMediaId(songId) // ✅ اضافه شد
-                .setMediaMetadata(
-                    MediaMetadata.Builder()
-                        .setTitle(title)
-                        .setArtist(artist)
-                        .setArtworkUri(imageUrl?.toUri())
-                        .build()
-                )
-                .build()
-            controller.setMediaItem(mediaItem)
-            controller.prepare()
-            controller.play()
+            return
         }
-    }
 
+        // ۲. اگه playlist داده شده و آهنگ توش هست → کل صف رو ست کن
+        if (playlist != null) {
+            val index = playlist.indexOfFirst { it.id == songId }
+            if (index >= 0) {
+                val mediaItems = playlist.map { song ->
+                    // برای آهنگ هدف از playUrl (که ممکنه local باشه) استفاده کن
+                    val uri = if (song.id == songId) playUrl else song.downloadUrl
+                    MediaItem.Builder()
+                        .setMediaId(song.id)
+                        .setUri(uri)
+                        .setMediaMetadata(
+                            MediaMetadata.Builder()
+                                .setTitle(song.title)
+                                .setArtist(song.artist)
+                                .setArtworkUri(song.imageUrl?.toUri())
+                                .build()
+                        )
+                        .build()
+                }
+                controller.setMediaItems(mediaItems, index, 0L)
+                controller.prepare()
+                controller.play()
+                return
+            }
+        }
+
+        // ۳. fallback: تک‌آهنگ
+        val mediaItem = MediaItem.Builder()
+            .setUri(playUrl)
+            .setMediaId(songId)
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(title)
+                    .setArtist(artist)
+                    .setArtworkUri(imageUrl?.toUri())
+                    .build()
+            )
+            .build()
+        controller.setMediaItem(mediaItem)
+        controller.prepare()
+        controller.play()
+    }
 
     fun playPlaylist(
         context: Context,
@@ -143,6 +202,10 @@ object PlayerManager {
 
     fun skipPrevious(){
         mediaController?.seekToPreviousMediaItem()
+    }
+
+    fun seekTo(positionMs: Long) {
+        mediaController?.seekTo(positionMs)
     }
 
     fun hasNext(): Boolean = mediaController?.hasNextMediaItem() ?: false
@@ -197,6 +260,35 @@ object PlayerManager {
 
 
 
+    // State برای Shuffle
+    private val _isShuffleOn = MutableStateFlow(false)
+    val isShuffleOn: StateFlow<Boolean> = _isShuffleOn.asStateFlow()
+
+    // State برای Repeat
+    private val _repeatMode = MutableStateFlow(RepeatMode.OFF)
+    val repeatMode: StateFlow<RepeatMode> = _repeatMode.asStateFlow()
+
+    fun toggleShuffle() {
+        val controller = mediaController ?: return
+        val newValue = !controller.shuffleModeEnabled
+        controller.shuffleModeEnabled = newValue
+        _isShuffleOn.value = newValue
+    }
+
+    fun cycleRepeatMode() {
+        val controller = mediaController ?: return
+        val next = when (_repeatMode.value) {
+            RepeatMode.OFF -> RepeatMode.REPEAT_ALL
+            RepeatMode.REPEAT_ALL -> RepeatMode.REPEAT_ONE
+            RepeatMode.REPEAT_ONE -> RepeatMode.OFF
+        }
+        _repeatMode.value = next
+        controller.repeatMode = when (next) {
+            RepeatMode.OFF -> Player.REPEAT_MODE_OFF
+            RepeatMode.REPEAT_ALL -> Player.REPEAT_MODE_ALL
+            RepeatMode.REPEAT_ONE -> Player.REPEAT_MODE_ONE
+        }
+    }
 
 
 }

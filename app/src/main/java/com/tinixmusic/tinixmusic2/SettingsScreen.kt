@@ -1,31 +1,18 @@
 package com.tinixmusic.tinixmusic2
 
-
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import kotlinx.coroutines.launch
-
-import androidx.compose.material3.Divider
-
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
-import kotlinx.coroutines.delay
-
-
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.ui.text.font.FontWeight
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,8 +22,6 @@ fun SettingsScreen(navController: NavController) {
 
     val isDarkMode by SettingsRepository.isDarkMode(context)
         .collectAsState(initial = false)
-    val defaultQuality by SettingsRepository.getDefaultQuality(context)
-        .collectAsState(initial = "320")
 
     Scaffold(
         topBar = {
@@ -56,7 +41,7 @@ fun SettingsScreen(navController: NavController) {
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            // تم تاریک
+            // ===== تم تاریک =====
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -76,46 +61,7 @@ fun SettingsScreen(navController: NavController) {
             Divider()
             Spacer(modifier = Modifier.height(24.dp))
 
-            // کیفیت پیش‌فرض
-            Text(
-                "کیفیت پیش‌فرض دانلود",
-                style = MaterialTheme.typography.titleMedium
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(
-                    selected = defaultQuality == "320",
-                    onClick = {
-                        scope.launch {
-                            SettingsRepository.setDefaultQuality(context, "320")
-                        }
-                    }
-                )
-                Text("320 kbps (کیفیت بالا)")
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(
-                    selected = defaultQuality == "128",
-                    onClick = {
-                        scope.launch {
-                            SettingsRepository.setDefaultQuality(context, "128")
-                        }
-                    }
-                )
-                Text("128 kbps (حجم کم)")
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-            Divider()
-            Spacer(modifier = Modifier.height(24.dp))
-
-
-
-            Spacer(modifier = Modifier.height(24.dp))
-            Divider()
-            Spacer(modifier = Modifier.height(24.dp))
-
-// ===== Sleep Timer =====
+            // ===== تایمر خواب =====
             Text(
                 "تایمر خواب",
                 style = MaterialTheme.typography.titleMedium
@@ -125,7 +71,6 @@ fun SettingsScreen(navController: NavController) {
             val sleepRemaining by PlayerManager.sleepTimerRemaining.collectAsState()
 
             if (sleepRemaining == null) {
-                // دکمه‌های تنظیم تایمر
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -135,12 +80,11 @@ fun SettingsScreen(navController: NavController) {
                             onClick = { PlayerManager.startSleepTimer(minutes) },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("$minutes دقیقه")
+                            Text("$minutes")
                         }
                     }
                 }
             } else {
-                // نمایش زمان باقی‌مونده
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -175,21 +119,6 @@ fun SettingsScreen(navController: NavController) {
                         }
                     }
                 }
-            }
-
-
-
-
-
-            // دکمه‌ی پاک کردن کش
-            Button(
-                onClick = { /* بعداً پیاده‌سازی می‌کنیم */ },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
-                )
-            ) {
-                Text("پاک کردن کش")
             }
         }
     }

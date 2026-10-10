@@ -32,6 +32,7 @@ object SongRepository {
         val posts = api.getSongs()
         return posts.map {it.toSong()}
     }
+
     private fun WpPost.toSong(): Song {
         val imageUrl = embedded?.featuredMedia?.firstOrNull()?.source_url
 
@@ -52,9 +53,11 @@ object SongRepository {
             }
         }
 
+        val rawTitle = Html.fromHtml(title.rendered, Html.FROM_HTML_MODE_LEGACY).toString()
+
         return Song(
             id = id.toString(),
-            title = Html.fromHtml(title.rendered, Html.FROM_HTML_MODE_LEGACY).toString(),
+            title = cleanTitle(rawTitle),        // ✅ اینجا پاک‌سازی می‌شه
             artist = artist ?: "نامشخص",
             downloadUrl = music320 ?: "",
             imageUrl = imageUrl,
@@ -62,10 +65,47 @@ object SongRepository {
         )
     }
 
+    /**
+     * تمیز کردن عنوان آهنگ:
+     *  ۱. حذف عبارت‌های «دانلود آهنگ»، «دانلود»، «آهنگ»
+     *  ۲. حذف هر چیزی که بعد از کلمه‌ی «از» میاد
+     *  ۳. حذف فاصله‌های اضافی و کاراکترهای جداکننده‌ی ته‌مانده
+     */
+    private fun cleanTitle(raw: String): String {
+        var t = raw
+
+        // ۱. حذف عبارت‌های رایج ابتدای عنوان
+        //    (ترتیب مهمه: اول ترکیب‌های بلندتر، بعد کوتاه‌ترها)
+        val phrasesToRemove = listOf(
+            "دانلود آهنگ جدید",
+            "دانلود آهنگ",
+            "دانلود موزیک",
+            "دانلود"
+        )
+        for (phrase in phrasesToRemove) {
+            t = t.replace(phrase, "", ignoreCase = true)
+        }
+
+        // ۲. حذف هر چیزی که بعد از « از » (با فاصله قبل و بعد) میاد
+        //    از indexOf استفاده می‌کنیم که اولین occurrence رو بگیره
+        val azIndex = t.indexOf(" از ")
+        if (azIndex >= 0) {
+            t = t.substring(0, azIndex)
+        }
+
+        // ۳. تمیزکاری نهایی
+        t = t
+            .replace(Regex("\\s+"), " ")           // فاصله‌های پشت‌سرهم → یک فاصله
+            .trim()
+            .trim('-', '|', '،', ',', ':', '؛', ';', '–', '—')  // کاراکترهای جداکننده‌ی اضافی
+            .trim()
+
+        return t
+    }
+
     suspend fun getSongByArtist(artist: String): List<Song>{
         return getSong().filter { song ->
             song.artist?.contains(artist,ignoreCase = true) == true
         }
     }
-
 }

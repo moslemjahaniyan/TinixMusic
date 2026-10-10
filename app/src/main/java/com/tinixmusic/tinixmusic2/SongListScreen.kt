@@ -1,53 +1,27 @@
 package com.tinixmusic.tinixmusic2
+
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import coil.compose.AsyncImage
-import android.widget.Toast
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,21 +35,21 @@ fun SongListScreen(navController: NavController, viewModel: SongListViewModel = 
     val context = LocalContext.current
     val favorites by FavoritesRepository.getFavorite(context).collectAsState(initial = emptySet())
 
-
-    // 👇 این خط رو اضافه کن
     val downloadedSongs by DownloadRepository.getDownloadedSongs(context)
         .collectAsState(initial = emptyList())
 
+    // ✅ برای این‌که بدونیم کدوم آهنگ در حال پخشه
+    val playingId by PlayerManager.currentSongId.collectAsState()
+    val isPlaying by PlayerManager.isPlaying.collectAsState()
+
+    // ✅ نقشه‌ی songId → مسیر محلی برای آهنگ‌های دانلودشده
+    val localPaths = remember(downloadedSongs) {
+        downloadedSongs.associate { it.songId to it.localPath }
+    }
 
     var searchQuery by remember { mutableStateOf("") }
+    var selectedTab by remember { mutableStateOf(0) }
 
-    var selectedTab by remember { mutableStateOf(0) } // 👈 گیومه‌ها حذف شدند
-    //خط زیر از قبل بوده ولی با خط بالا جایگزین شده برای برطرف کردن خطای نوع
-    //var selectedTab by remember { mutableStateOf("0") }
-
-
-
-// انتخاب لیست بر اساس تب
     val songsBasedOnTab = when (selectedTab) {
         1 -> allSongs.filter { it.id in favorites }
         2 -> downloadedSongs.map { downloaded ->
@@ -90,20 +64,14 @@ fun SongListScreen(navController: NavController, viewModel: SongListViewModel = 
         else -> allSongs
     }
 
-
-
-
-
-    // اعمال جستجو
-    val songs = if (searchQuery.isBlank()){
-        songsBasedOnTab
-    }else{
-        songsBasedOnTab.filter { song ->
+    val songs = songsBasedOnTab
+        .asSequence()
+        .filter { song ->
+            if (searchQuery.isBlank()) return@filter true
             song.title.contains(searchQuery, ignoreCase = true) ||
                     (song.artist?.contains(searchQuery, ignoreCase = true) == true)
         }
-    }
-
+        .toList()
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -127,7 +95,6 @@ fun SongListScreen(navController: NavController, viewModel: SongListViewModel = 
             }
         }
 
-        /*
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
@@ -141,23 +108,6 @@ fun SongListScreen(navController: NavController, viewModel: SongListViewModel = 
             singleLine = true
         )
 
-
-         */
-
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            placeholder = { Text("جستجوی آهنگ یا خواننده...") },
-            leadingIcon = {
-                Icon(Icons.Default.Search, contentDescription = null)
-            },
-            singleLine = true
-        )
-
-        // ============ 👇 این رو اینجا اضافه کن 👇 ============
         if (songs.isNotEmpty()) {
             Button(
                 onClick = {
@@ -169,13 +119,10 @@ fun SongListScreen(navController: NavController, viewModel: SongListViewModel = 
             ) {
                 Icon(Icons.Default.PlayArrow, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("پخش همه (${songs.size} آهنگ)")
+                Text("پخش همه")
             }
             Spacer(modifier = Modifier.height(8.dp))
         }
-        // ============ 👆 پایان کد اضافه شده 👆 ============
-
-
 
         when {
             isLoading -> {
@@ -209,12 +156,25 @@ fun SongListScreen(navController: NavController, viewModel: SongListViewModel = 
             }
             else -> {
                 LazyColumn {
-                    items(songs) { song ->
+                    items(songs, key = { it.id }) { song ->
                         SongItem(
                             song = song,
                             onClick = {
                                 navController.navigate("songDetail/${song.id}")
-                            }
+                            },
+                            onPlayClick = {
+                                PlayerManager.togglePlayPause(
+                                    context = context,
+                                    songId = song.id,
+                                    url = song.downloadUrl,
+                                    title = song.title,
+                                    artist = song.artist,
+                                    imageUrl = song.imageUrl,
+                                    localPath = localPaths[song.id],   // ✅ اگه دانلود شده
+                                    playlist = songs                   // ✅ صف = همون لیست فعلی
+                                )
+                            },
+                            isPlayingThis = isPlaying && playingId == song.id
                         )
                     }
                 }
@@ -224,23 +184,52 @@ fun SongListScreen(navController: NavController, viewModel: SongListViewModel = 
 }
 
 
-
-
 @Composable
-fun SongItem(song: Song, onClick: () -> Unit) {
+fun SongItem(
+    song: Song,
+    onClick: () -> Unit,
+    onPlayClick: () -> Unit,
+    isPlayingThis: Boolean,
+    modifier: Modifier = Modifier
+) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable { onClick() }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AsyncImage(
-            model = song.imageUrl ?: R.drawable.music_logo,
-            contentDescription = "تصویر ${song.title}",
-            modifier = Modifier.size(64.dp),
-            contentScale = ContentScale.Crop
-        )
+        // ✅ کل کاور کلیک‌پذیر + دکمه‌ی کوچیک روی تصویر
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .clickable { onPlayClick() }
+        ) {
+            AsyncImage(
+                model = song.imageUrl ?: R.drawable.music_logo,
+                contentDescription = "تصویر ${song.title}",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            // دکمه‌ی گرد کوچیک در گوشه‌ی پایین-راست
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(4.dp)
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isPlayingThis) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = if (isPlayingThis) "توقف" else "پخش",
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
         Spacer(modifier = Modifier.width(16.dp))
         Column {
             Text(
@@ -248,12 +237,9 @@ fun SongItem(song: Song, onClick: () -> Unit) {
                 style = MaterialTheme.typography.headlineSmall
             )
             Text(
-
                 text = song.artist ?: "خواننده نامشخص",
                 style = MaterialTheme.typography.bodyMedium
             )
         }
-
     }
-
 }

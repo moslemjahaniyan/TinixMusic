@@ -27,7 +27,7 @@ fun ShimmerSongItem() {
         targetValue = 1000f,
         animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 1200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
+            repeatMode = androidx.compose.animation.core.RepeatMode.Restart
         ),
         label = "translate"
     )
